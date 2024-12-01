@@ -1,9 +1,18 @@
 
 #TODO: add comments and description
 
+source("CGDA_lassosolve.R")
+source("FISTA_lassosolve.R")
+source("ISTA_lassosolve.R")
+# source("PFA_lassosolve.R")
+source("SLA_lassosolve.R")
+library(glmnet)
+
 choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy", 
                                    data_size = NULL, feature_size = NULL, 
                                    sparsity = NULL, compute_resources = NULL, precision = NULL) {
+  
+
   # 自动判断未提供的参数
   if (is.null(data_size)) {
     n_samples <- nrow(X)
@@ -86,10 +95,19 @@ choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy",
 }
 
 # Robust Lasso with PFA integration
-robust_lasso <- function(X, y, lambda = NULL, method = "auto") {
+robust_lasso <- function(X, y, lambda = NULL, method = "auto", priority = "accuracy", 
+                                   data_size = NULL, feature_size = NULL, 
+                                   sparsity = NULL, compute_resources = NULL, precision = NULL) {
+  
+  if (method!="auto"&&!is.null(priority)){
+    warning("The priority argument is only used when method is set to 'auto'.")
+  }
+
   # Deciding which algorithm gets chosen
   if (method == "auto") {
-    method <- choose_lasso_algorithm(X, y, lambda)
+    method <- choose_lasso_algorithm(X, y, lambda, priority, 
+                                   data_size = NULL, feature_size = NULL, 
+                                   sparsity = NULL, compute_resources = NULL, precision = NULL)
   }
   
   # Fitting the model
