@@ -1,5 +1,5 @@
-
 #TODO: add comments and description
+#TODO: uniform the output format (glmnet, lars)
 
 source("CGDA_lassosolve.R")
 source("FISTA_lassosolve.R")
@@ -13,7 +13,7 @@ choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy",
                                    sparsity = NULL, compute_resources = NULL, precision = NULL) {
   
 
-  # 自动判断未提供的参数
+  # auto mode
   if (is.null(data_size)) {
     n_samples <- nrow(X)
     data_size <- ifelse(n_samples < 1000, "small",
@@ -41,7 +41,7 @@ choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy",
                         ifelse(priority == "speed", "low", "medium"))
   }
   
-  # 优先维度逻辑
+  # choosing the algorithm based on the priority
   if (priority == "speed") {
     if (data_size == "very_large" || compute_resources == "low") {
       return("SLA")
@@ -90,7 +90,7 @@ choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy",
     }
   }
   
-  # 默认返回
+  # default output
   return("No suitable algorithm found. Please check your inputs.")
 }
 
