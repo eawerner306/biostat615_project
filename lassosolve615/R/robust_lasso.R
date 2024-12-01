@@ -95,12 +95,15 @@ choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy",
 }
 
 # Robust Lasso with PFA integration
-robust_lasso <- function(X, y, lambda = NULL, method = "auto", priority = "accuracy", 
+robust_lasso <- function(X, y, lambda = NULL, method = "auto", priority = NULL, 
                                    data_size = NULL, feature_size = NULL, 
                                    sparsity = NULL, compute_resources = NULL, precision = NULL) {
   
   if (method!="auto"&&!is.null(priority)){
     warning("The priority argument is only used when method is set to 'auto'.")
+  }
+  if (is.null(priority)){
+    priority <- "accuracy"
   }
 
   # Deciding which algorithm gets chosen
