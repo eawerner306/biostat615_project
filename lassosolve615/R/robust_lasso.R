@@ -1,5 +1,5 @@
 #' Dynamic lasso problem solve
-#' Robustly and evaluates given data for best algorithm to handle LASSO
+#' Robustly and evaluates given X for best algorithm to handle LASSO
 #'
 #' @param x matrix of predictors
 #' @param y vector of responses
@@ -150,11 +150,12 @@
 # print(output$result)
 
 
-robust_lasso <- function(data, lambda, priority = "accuracy", 
+choose_lasso_algorithm <- function(X,y, lambda, priority = "accuracy", 
                                    data_size = NULL, feature_size = NULL, 
                                    sparsity = NULL, compute_resources = NULL, precision = NULL) {
   # 参数说明：
-  # data: 输入数据集，应为一个 data frame 或矩阵。
+  # X: 输入数据集，应为一个 X frame 或矩阵。
+  # y: 响应变量。
   # lambda: 正则化参数，用于判断稀疏性需求。
   # priority: 优先维度，默认为 "accuracy"。
   # data_size: 用户指定数据规模，可选值为 "small", "medium", "large", "very_large"。
@@ -165,14 +166,14 @@ robust_lasso <- function(data, lambda, priority = "accuracy",
   
   # 自动判断未提供的参数
   if (is.null(data_size)) {
-    n_samples <- nrow(data)
+    n_samples <- nrow(X)
     data_size <- ifelse(n_samples < 1000, "small",
                         ifelse(n_samples < 10000, "medium",
                                ifelse(n_samples < 100000, "large", "very_large")))
   }
   
   if (is.null(feature_size)) {
-    n_features <- ncol(data)
+    n_features <- ncol(X)
     feature_size <- ifelse(n_features < 100, "low",
                            ifelse(n_features < 1000, "medium", "high"))
   }
@@ -194,9 +195,9 @@ robust_lasso <- function(data, lambda, priority = "accuracy",
   # 优先维度逻辑
   if (priority == "speed") {
     if (data_size == "very_large" || compute_resources == "low") {
-      return("LSA")
+      return("SLA")
     } else if (data_size %in% c("medium", "large") && sparsity == "high") {
-      return("Coordinate Descent")
+      return("Coordinate_Descent")
     } else {
       return("FISTA")
     }
@@ -210,7 +211,7 @@ robust_lasso <- function(data, lambda, priority = "accuracy",
         return("FISTA")
       }
     } else if (precision == "medium") {
-      return("Coordinate Descent")
+      return("Coordinate_Descent")
     } else {
       return("ISTA")
     }
@@ -221,20 +222,20 @@ robust_lasso <- function(data, lambda, priority = "accuracy",
       if (data_size == "small" && feature_size == "high") {
         return("LARS")
       } else if (data_size %in% c("medium", "large")) {
-        return("Coordinate Descent")
+        return("Coordinate_Descent")
       } else {
         return("FISTA")
       }
     } else {
-      return("LSA")
+      return("SLA")
     }
   }
   
   if (priority == "scalability") {
     if (data_size == "very_large") {
-      return("LSA")
+      return("SLA")
     } else if (data_size == "large" && sparsity == "high") {
-      return("Coordinate Descent")
+      return("Coordinate_Descent")
     } else {
       return("CGDA")
     }
@@ -246,13 +247,35 @@ robust_lasso <- function(data, lambda, priority = "accuracy",
 
 # # 示例使用
 # set.seed(42)
-# data <- matrix(rnorm(10000 * 500), nrow = 10000, ncol = 500)  # 模拟数据
+# X <- matrix(rnorm(10000 * 500), nrow = 10000, ncol = 500)  # 模拟数据
 # lambda <- 0.05  # 正则化参数
 
 # # 用户不提供任何附加信息，使用默认逻辑
-# algorithm_default <- choose_lasso_algorithm(data = data, lambda = lambda)
+# algorithm_default <- choose_lasso_algorithm(X = X, lambda = lambda)
 # cat("Selected algorithm (default):", algorithm_default, "\n")
 
 # # 用户指定部分参数
-# algorithm_custom <- choose_lasso_algorithm(data = data, lambda = lambda, sparsity = "high", compute_resources = "low")
+# algorithm_custom <- choose_lasso_algorithm(X = X, lambda = lambda, sparsity = "high", compute_resources = "low")
 # cat("Selected algorithm (custom):", algorithm_custom, "\n")
+
+robust_lasso <- function(X, y, lambda = NULL, method = "auto", options = list()) {
+  # Deciding which algorithm gets chosen
+  # future algorithms that could be chosen: ista, fista, sla
+  if (method == "auto") {
+      method = choose_lasso_algorithm(X, y, lambda)
+  }
+  # Fitting the mode
+  fit <- switch(
+    # add new algorithms added to the list
+    method,
+    "Coordinate_Descent" = glmnet::glmnet(X,y,lambda=lambda),
+    "LARS" = lars::lars(X,y),
+    "FISTA" = FISTA_lassosolve(X, y, lambda=lambda),
+    "SLA" = SLA_lassosolve(X, y, lambda=lambda), 
+    "CGDA" = CGDA_lassosolve(X, y, lambda=lambda),
+    "ISTA" = ISTA_lassosolve(X, y, lambda=lambda),
+    stop("Unknown method")
+  )
+
+  return(list(method = method, fit = fit))
+}
