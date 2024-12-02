@@ -2,13 +2,14 @@
 # TODO: uniform the output format (glmnet, lars)
 # TODO: add the option to consider the intercept term
 # beta: include intercept
-
-source("CGDA_lassosolve.R")
-source("FISTA_lassosolve.R")
-source("ISTA_lassosolve.R")
-source("Coordinate_Descent_lassosolve.R")
-# source("PFA_lassosolve.R")
-source("SLA_lassosolve.R")
+library(here)
+#source("CGDA_lassosolve.R")
+source(here("R/CGDA_lassosolve.R"))
+source(here("R/FISTA_lassosolve.R"))
+source(here("R/ISTA_lassosolve.R"))
+source(here("R/Coordinate_Descent_lassosolve.R"))
+# source(here("R/PFA_lassosolve.R"))
+source(here("R/SLA_lassosolve.R"))
 library(glmnet)
 
 choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy", 
