@@ -1,9 +1,12 @@
-#TODO: add comments and description
-#TODO: uniform the output format (glmnet, lars)
+# TODO: add comments and description
+# TODO: uniform the output format (glmnet, lars)
+# TODO: add the option to consider the intercept term
+# beta: include intercept
 
 source("CGDA_lassosolve.R")
 source("FISTA_lassosolve.R")
 source("ISTA_lassosolve.R")
+source("Coordinate_Descent_lassosolve.R")
 # source("PFA_lassosolve.R")
 source("SLA_lassosolve.R")
 library(glmnet)
@@ -116,7 +119,7 @@ robust_lasso <- function(X, y, lambda = NULL, method = "auto", priority = NULL,
   # Fitting the model
   fit <- switch(
     method,
-    "Coordinate_Descent" = glmnet::glmnet(X, y, lambda = lambda),
+    "Coordinate_Descent" = Coordinate_Descent_lassosolve(X, y, lambda = lambda),
     "LARS" = lars::lars(X, y),
     "FISTA" = FISTA_lassosolve(X, y, lambda = lambda),
     "SLA" = SLA_lassosolve(X, y, lambda = lambda), 
