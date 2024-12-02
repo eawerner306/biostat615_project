@@ -24,6 +24,7 @@ choose_lasso_algorithm <- function(X, y, lambda, priority = "accuracy",
                                ifelse(n_samples < 100000, "large", "very_large")))
   }
   
+
   if (is.null(feature_size)) {
     n_features <- ncol(X)
     feature_size <- ifelse(n_features < 100, "low",
