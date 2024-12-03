@@ -1,7 +1,9 @@
 2024/12/1: 
--所有算法基本跑通，测试主要和glmnet的结果对比
+-目前所有算法基本跑通，测试主要和glmnet的结果对比
 -在用Boston Housing测试时，auto选择的是ISTA，但Coordinate Descent的MSE更小，ISTA其次
--接下来：对于每个测试数据集，判断auto选择的算法是否是MSE最小的算法，如果不是，找出原因并更新auto选择的算法
+-接下来：
+--对于每个测试数据集，判断auto选择的算法是否是MSE最小的算法，如果不是，找出原因并更新auto选择的算法
+--priority下选择的算法是否符合
 -测试：MSE，system.time，Relative Error, R^2, 可视化
 -测试数据集：
 --小规模数据：
