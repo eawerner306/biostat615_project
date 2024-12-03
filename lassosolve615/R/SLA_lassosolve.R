@@ -79,80 +79,97 @@
 # result <- SLA_lassosolve(X, y, lambda)
 # print(result)
 
+
 SLA_lassosolve <- function(X, y, lambda, alpha = 10, max_iter = 1000, tol = 1e-6) {
+  # SLA_lassosolve: Smooth Lasso Algorithm for Lasso regression
+  # Inputs:
+  #   X        : Predictor matrix (n x p)
+  #   y        : Response vector (n x 1)
+  #   lambda   : Regularization parameter for Lasso penalty
+  #   alpha    : Parameter for smoothing (larger alpha -> closer to L1 penalty)
+  #   max_iter : Maximum number of iterations
+  #   tol      : Tolerance for convergence
+  # Outputs:
+  #   beta        : Estimated coefficients (including intercept)
+  #   iter        : Number of iterations performed
+  #   convergence : Boolean indicating if the algorithm converged
+  
+  # Standardize X and y
+  X_means <- colMeans(X)
+  X_sds <- apply(X, 2, sd)
+  X_std <- scale(X, center = X_means, scale = X_sds)
+  y_mean <- mean(y)
+  y_centered <- y - y_mean
   
   # Add intercept column to X
-  X <- cbind(1, X)  # 添加一列全 1 的常数列表示截距
+  X_aug <- cbind(1, X_std)  # Include intercept term
   
   # Dimensions
-  n <- nrow(X)
-  p <- ncol(X)
-
+  n <- nrow(X_aug)
+  p <- ncol(X_aug)
+  
   # Precompute constants
-  XtX <- crossprod(X) / n  # X'X / n
-  Xty <- crossprod(X, y) / n  # X'y / n
-  sigma_max_sq <- max(eigen(XtX, symmetric = TRUE, only.values = TRUE)$values)
+  XtX <- crossprod(X_aug) / n  # (X^T X) / n
+  Xty <- crossprod(X_aug, y_centered) / n  # (X^T y) / n
+  
+  # Compute maximum eigenvalue for step size
+  eigenvalues <- eigen(XtX, symmetric = TRUE, only.values = TRUE)$values
+  sigma_max_sq <- max(eigenvalues)
+  
+  # Step size
   mu <- 1 / (sigma_max_sq + lambda * alpha / 2)
-
-  # Surrogate function gradient adjustment
+  
+  # Smooth surrogate gradient function
   surrogate_gradient <- function(beta) {
-    # Ensure no division by zero
-    beta[beta == 0] <- 1e-10
-    exp_alpha_beta <- exp(alpha * beta)
-    exp_neg_alpha_beta <- exp(-alpha * beta)
-    term1 <- -2 * log(1 + exp_neg_alpha_beta) / beta^2
-    term2 <- (2 * alpha * exp_alpha_beta) / (beta * (1 + exp_alpha_beta)) - 1
+    # Smooth approximation of the L1 penalty gradient
+    safe_beta <- ifelse(abs(beta) < 1e-8, 1e-8, beta)  # Avoid division by zero
+    exp_alpha_beta <- exp(alpha * safe_beta)
+    exp_neg_alpha_beta <- exp(-alpha * safe_beta)
+    term1 <- -2 * log(1 + exp_neg_alpha_beta) / safe_beta^2
+    term2 <- (2 * alpha * exp_alpha_beta) / (safe_beta * (1 + exp_alpha_beta)) - 1
     v <- term1 + term2
-    v[!is.finite(v)] <- 0  # Replace any non-finite values with 0
-    return(v)
+    v[!is.finite(v)] <- 0  # Handle non-finite values
+    return(lambda * v)
   }
-
+  
   # Initialization
-  beta <- rep(0, p)  # β^(0)
-  beta_prev <- rep(0, p)  # β^(−1)
-
+  beta <- rep(0, p)  # Initial beta (including intercept)
+  beta_prev <- beta
+  convergence <- FALSE
+  
   # SLA Iterations
   for (iter in 1:max_iter) {
-    # Extrapolated step
-    w <- beta + (iter - 2) / (iter + 1) * (beta - beta_prev)
-
-    # Gradient calculation
+    # Extrapolation parameter
+    gamma <- (iter - 1) / (iter + 2)
+    
+    # Extrapolated point
+    w <- beta + gamma * (beta - beta_prev)
+    
+    # Gradient computation
     gradient <- XtX %*% w - Xty + surrogate_gradient(w)
-
-    # Update step
+    
+    # Update beta
     beta_new <- w - mu * gradient
-
-    # Check convergence (ensure finite values)
-    if (all(is.finite(beta_new)) && sqrt(sum((beta_new - beta)^2)) < tol) {
-      return(list(beta = beta_new, iter = iter, convergence = TRUE))
+    
+    # Check convergence
+    if (sqrt(sum((beta_new - beta)^2)) < tol) {
+      convergence <- TRUE
+      beta <- beta_new
+      break
     }
-
-    # Update variables for next iteration
+    
+    # Update beta values for next iteration
     beta_prev <- beta
     beta <- beta_new
   }
-
+  
+  # Rescale coefficients to original scale
+  beta_rescaled <- beta
+  beta_rescaled[-1] <- beta_rescaled[-1] / X_sds  # Adjust for standardization
+  intercept <- beta_rescaled[1] - sum((X_means / X_sds) * beta[-1])  # Adjust intercept
+  beta_rescaled[1] <- intercept + y_mean  # Final intercept
+  
   # Return results
-  return(list(beta = beta, iter = max_iter, convergence = FALSE))
+  return(list(beta = beta_rescaled, iter = iter, convergence = convergence))
 }
-
-# set.seed(123)
-
-# # Example data
-# n <- 100
-# p <- 10
-# X <- matrix(rnorm(n * p), n, p)
-# beta_true <- c(5, 1, -1, rep(0, p - 2))
-# y <- X %*% beta_true[-1] + beta_true[1] + rnorm(n)
-
-# # Solve using SLA
-# lambda <- 0.1
-# result <- SLA_lassosolve(X, y, lambda)
-
-# # Display results
-# cat("Estimated beta (without intercept):\n")
-# print(result$beta)
-# cat("Intercept:", result$intercept, "\n")
-# cat("Number of iterations:", result$iter, "\n")
-# cat("Convergence:", result$convergence, "\n")
 
