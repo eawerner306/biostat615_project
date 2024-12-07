@@ -1,0 +1,114 @@
+---
+title: "Test SLA"
+author: "Jack Yang"
+date: "December 6, 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+SLA_lassosolve <- function(X, y, lambda, alpha = 10, max_iter = 1000, tol = 1e-6) {
+  # Dimensions
+  n <- nrow(X)
+  p <- ncol(X)
+  
+  # Precompute constants
+  XtX <- crossprod(X) / n       # X'X / n
+  Xty <- crossprod(X, y) / n    # X'y / n
+  sigma_max_sq <- max(eigen(XtX, symmetric = TRUE, only.values = TRUE)$values)
+  mu <- 1 / (sigma_max_sq + lambda * alpha / 2)
+  
+  # Define the correct gradient of the surrogate function (∇φα)
+  surrogate_gradient <- function(beta) {
+    grad <- tanh(alpha * beta / 2)
+    return(grad)
+  }
+  
+  # Initialization
+  beta <- rep(0, p)  # β^(0)
+  beta_prev <- rep(0, p)  # β^(−1)
+  
+  # Iterative SLA optimization
+  for (iter in 1:max_iter) {
+    # Extrapolated step
+    w <- beta + (iter - 2) / (iter + 1) * (beta - beta_prev)
+    
+    # Gradient calculation
+    gradient <- XtX %*% w - Xty + lambda * surrogate_gradient(w)
+    
+    # Update step
+    beta_new <- w - mu * gradient
+    
+    # Check convergence
+    if (sqrt(sum((beta_new - beta)^2)) < tol) {
+      return(list(beta = beta_new, iter = iter, convergence = TRUE))
+    }
+    
+    # Update variables for the next iteration
+    beta_prev <- beta
+    beta <- beta_new
+  }
+  
+  # Return results if not converged within max_iter
+  return(list(beta = beta, iter = max_iter, convergence = FALSE))
+}
+```
+
+```{r}
+# Simulate data for sparse solutions
+set.seed(9248)
+m <- 500
+n <- 2000
+X <- matrix(rnorm(m * n), nrow = m)
+x0 <- runif(n)
+x0[x0 < 0.9] <- 0
+y <- X %*% x0 + rnorm(m)
+lambda <- 0.5
+```
+
+```{r}
+if (!requireNamespace("glmnet", quietly = TRUE)) {
+  install.packages("glmnet")
+}
+library(glmnet)
+
+# Compute R^2
+calculate_r_squared <- function(y, y_pred) {
+  ss_total <- sum((y - mean(y))^2)  # Total sum of squares
+  ss_residual <- sum((y - y_pred)^2)  # Residual sum of squares
+  r_squared <- 1 - (ss_residual / ss_total)
+  return(r_squared)
+}
+
+# Residual Plot
+plot_residuals <- function(y, y_pred, r_squared, title) {
+  residuals <- y - y_pred
+  plot(residuals, main = title,
+       xlab = "Index", ylab = "Residuals", col = "blue", pch = 16)
+  abline(h = 0, col = "red", lwd = 2)
+  legend("topright", legend = paste("R^2 =", round(r_squared, 3)), bty = "n", cex = 1.2)
+}
+
+# Run SLA
+result_sla <- SLA_lassosolve(X, y, lambda, alpha = 10, max_iter = 1000, tol = 1e-6)
+beta_sla <- result_sla$beta
+y_pred_sla <- X %*% beta_sla
+
+# Run glmnet
+fit_glmnet <- glmnet(X, y, alpha = 1, lambda = lambda, intercept = TRUE)
+beta_glmnet <- as.vector(coef(fit_glmnet, s = lambda))  # Include intercept term
+y_pred_glmnet <- predict(fit_glmnet, X, s = lambda)
+
+# R^2 for both methods
+r_squared_sla <- calculate_r_squared(y, y_pred_sla)
+r_squared_glmnet <- calculate_r_squared(y, y_pred_glmnet)
+
+# Visualize residual plots
+par(mfrow = c(1, 2))  # Two plots side-by-side
+plot_residuals(y, y_pred_sla, r_squared_sla, title = "Residual Plot: sla")
+plot_residuals(y, y_pred_glmnet, r_squared_glmnet, title = "Residual Plot: glmnet")
+```
+

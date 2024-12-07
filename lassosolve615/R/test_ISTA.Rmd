@@ -1,0 +1,146 @@
+---
+title: "Test ISTA"
+author: "Jack Yang"
+date: "December 6, 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+ISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
+  n <- nrow(X)
+  p <- ncol(X)
+
+  # Center X and y for numerical stability
+  X_mean <- colMeans(X)
+  y_mean <- mean(y)
+  X_centered <- scale(X, center = X_mean, scale = FALSE)
+  y_centered <- y - y_mean
+
+  # Precompute X'X and X'y
+  XtX <- crossprod(X_centered) / n
+  Xty <- crossprod(X_centered, y_centered) / n
+
+  # Lipschitz constant (L = max eigenvalue of XtX)
+  L <- max(eigen(XtX, symmetric = TRUE, only.values = TRUE)$values)
+  # L <- norm(X, "2")^2
+  
+  # Initialize beta (use Ridge regression initialization for better accuracy)
+  beta <- solve(XtX + diag(lambda, p), Xty)
+  start_time <- Sys.time()
+  
+  # ISTA Iterations
+  for (iter in 1 : max_iter) {
+    # Gradient calculation
+    gradient <- XtX %*% beta - Xty
+    beta_new <- soft_threshold(beta - (1 / L) * gradient, lambda / L)
+
+    # Check convergence using relative error
+    if (sqrt(sum((beta_new - beta)^2)) / max(1, sqrt(sum(beta^2))) < tol) {
+      intercept <- y_mean - sum(X_mean * beta_new)  # Restore intercept
+      full_beta <- c(intercept, beta_new)          # Combine intercept and coefficients
+      return(list(beta = full_beta, iter = iter, convergence = TRUE, 
+                  time = Sys.time() - start_time))
+    }
+
+    # Update beta
+    beta <- beta_new
+  }
+
+  # Final intercept calculation
+  intercept <- y_mean - sum(X_mean * beta)
+  full_beta <- c(intercept, beta)
+
+  return(list(beta = full_beta, iter = max_iter, convergence = FALSE, 
+              time = Sys.time() - start_time))
+}
+
+# Soft-thresholding function
+soft_threshold <- function(z, gamma) {
+  return(sign(z) * pmax(0, abs(z) - gamma))
+}
+```
+
+```{r}
+ISTA_solver <- function(X, y, lambda, max_iter, tol) {
+  beta <- rep(0, ncol(X))
+  obj <- numeric(max_iter)
+  L <- norm(X, "2")^2
+  start_time <- Sys.time()
+  for (iter in 1 : max_iter) {
+    beta_new <- soft_thresh(beta + t(X) %*% (y - X %*% beta) / L, lambda / L)
+    obj[iter] <- 0.5 * norm(X %*% beta_new - y, "F")^2 + lambda * sum(abs(beta_new))
+    
+    if (iter > 1 && abs(obj[iter] - obj[iter - 1]) < tol) {
+      return(list(beta = beta_new, convergence = TRUE, iter = iter, 
+                  obj = obj[1 : iter], time = Sys.time() - start_time))
+    }
+    beta <- beta_new
+  }
+  return(list(beta = beta, convergence = TRUE, iter = max_iter, obj = obj, 
+              time = Sys.time() - start_time))
+}
+
+soft_thresh <- function(x, lambda) {
+  sign(x) * pmax(abs(x) - lambda, 0)
+}
+```
+
+```{r}
+# Simulate data for sparse solutions
+set.seed(9248)
+m <- 500
+n <- 2000
+X <- matrix(rnorm(m * n), nrow = m)
+x0 <- runif(n)
+x0[x0 < 0.9] <- 0
+y <- X %*% x0 + rnorm(m)
+lambda <- 0.5
+```
+
+```{r}
+if (!requireNamespace("glmnet", quietly = TRUE)) {
+  install.packages("glmnet")
+}
+library(glmnet)
+
+# Compute R^2
+calculate_r_squared <- function(y, y_pred) {
+  ss_total <- sum((y - mean(y))^2)  # Total sum of squares
+  ss_residual <- sum((y - y_pred)^2)  # Residual sum of squares
+  r_squared <- 1 - (ss_residual / ss_total)
+  return(r_squared)
+}
+
+# Residual Plot
+plot_residuals <- function(y, y_pred, r_squared, title) {
+  residuals <- y - y_pred
+  plot(residuals, main = title,
+       xlab = "Index", ylab = "Residuals", col = "blue", pch = 16)
+  abline(h = 0, col = "red", lwd = 2)
+  legend("topright", legend = paste("R^2 =", round(r_squared, 3)), bty = "n", cex = 1.2)
+}
+
+# Run ISTA
+result_ista <- ISTA_solver(X, y, lambda, max_iter = 1000, tol = 1e-5)
+beta_ista <- result_ista$beta
+y_pred_ista <- X %*% beta_ista
+
+# Run glmnet
+fit_glmnet <- glmnet(X, y, alpha = 1, lambda = lambda, intercept = TRUE)
+beta_glmnet <- as.vector(coef(fit_glmnet, s = lambda))  # Include intercept term
+y_pred_glmnet <- predict(fit_glmnet, X, s = lambda)
+
+# R^2 for both methods
+r_squared_ista <- calculate_r_squared(y, y_pred_ista)
+r_squared_glmnet <- calculate_r_squared(y, y_pred_glmnet)
+
+# Visualize residual plots
+par(mfrow = c(1, 2))  # Two plots side-by-side
+plot_residuals(y, y_pred_ista, r_squared_ista, title = "Residual Plot: ista")
+plot_residuals(y, y_pred_glmnet, r_squared_glmnet, title = "Residual Plot: glmnet")
+```
+

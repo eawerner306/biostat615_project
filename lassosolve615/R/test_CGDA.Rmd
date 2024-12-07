@@ -1,0 +1,108 @@
+---
+title: "Test CGDA"
+author: "Jack Yang"
+date: "December 6, 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+CGDA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
+
+  n <- nrow(X)
+  p <- ncol(X)
+
+  # Precompute X'X and X'y
+  XtX <- crossprod(X)
+  Xty <- crossprod(X, y)
+
+  # Initialize beta
+  beta <- rep(0, p)  # β^(0)
+
+  # Soft-thresholding function
+  soft_threshold <- function(z, gamma) {
+    sign(z) * pmax(0, abs(z) - gamma)
+  }
+
+  # CGDA Iterations
+  for (iter in 1:max_iter) {
+    beta_prev <- beta
+
+    # Coordinate-wise updates
+    for (j in 1:p) {
+      # Compute the partial residual
+      r_j <- Xty[j] - sum(XtX[j, -j] * beta[-j])
+
+      # Update β_j^(k+1)
+      beta[j] <- soft_threshold(r_j / n, lambda) / (XtX[j, j] / n)
+    }
+
+    # Check convergence
+    if (sqrt(sum((beta - beta_prev)^2)) < tol) {
+      return(list(beta = beta, iter = iter, convergence = TRUE))
+    }
+  }
+
+  # Return results
+  return(list(beta = beta, iter = max_iter, convergence = FALSE))
+}
+```
+
+```{r}
+# Simulate data for sparse solutions
+set.seed(9248)
+m <- 500
+n <- 2000
+X <- matrix(rnorm(m * n), nrow = m)
+x0 <- runif(n)
+x0[x0 < 0.9] <- 0
+y <- X %*% x0 + rnorm(m)
+lambda <- 0.5
+```
+
+```{r}
+if (!requireNamespace("glmnet", quietly = TRUE)) {
+  install.packages("glmnet")
+}
+library(glmnet)
+
+# Compute R^2
+calculate_r_squared <- function(y, y_pred) {
+  ss_total <- sum((y - mean(y))^2)  # Total sum of squares
+  ss_residual <- sum((y - y_pred)^2)  # Residual sum of squares
+  r_squared <- 1 - (ss_residual / ss_total)
+  return(r_squared)
+}
+
+# Residual Plot
+plot_residuals <- function(y, y_pred, r_squared, title) {
+  residuals <- y - y_pred
+  plot(residuals, main = title,
+       xlab = "Index", ylab = "Residuals", col = "blue", pch = 16)
+  abline(h = 0, col = "red", lwd = 2)
+  legend("topright", legend = paste("R^2 =", round(r_squared, 3)), bty = "n", cex = 1.2)
+}
+
+# Run ISTA
+result_cgda <- CGDA_lassosolve(X, y, lambda, max_iter = 1000, tol = 1e-5)
+beta_cgda <- result_cgda$beta
+y_pred_cgda <- X %*% beta_cgda
+
+# Run glmnet
+fit_glmnet <- glmnet(X, y, alpha = 1, lambda = lambda, intercept = TRUE)
+beta_glmnet <- as.vector(coef(fit_glmnet, s = lambda))  # Include intercept term
+y_pred_glmnet <- predict(fit_glmnet, X, s = lambda)
+
+# R^2 for both methods
+r_squared_cgda <- calculate_r_squared(y, y_pred_cgda)
+r_squared_glmnet <- calculate_r_squared(y, y_pred_glmnet)
+
+# Visualize residual plots
+par(mfrow = c(1, 2))  # Two plots side-by-side
+plot_residuals(y, y_pred_cgda, r_squared_cgda, title = "Residual Plot: cgda")
+plot_residuals(y, y_pred_glmnet, r_squared_glmnet, title = "Residual Plot: glmnet")
+```
+

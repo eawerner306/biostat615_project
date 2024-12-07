@@ -1,0 +1,101 @@
+---
+title: "Test FISTA"
+author: "Jack Yang"
+date: "December 6, 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+FISTA_solver <- function(X, y, lambda, max_iter, tol = 1e-6) {
+  beta <- rep(0, ncol(X))
+  z <- beta
+  t <- 1
+  obj <- numeric(max_iter)
+  L <- norm(X, "2")^2
+  start_time <- Sys.time()
+  
+  for (iter in 1 : max_iter) {
+    beta_old <- beta
+    z <- z + t(X) %*% (y - X %*% z) / L
+    beta_new <- soft_thresh(z, lambda / L)
+    t_old <- t
+    t <- (1 + sqrt(1 + 4 * t^2)) / 2
+    z <- beta_new + ((t_old - 1) / t) * (beta_new - beta_old)
+    obj[iter] <- 0.5 * norm(X %*% beta_new - y, "F")^2 + lambda * sum(abs(beta_new))
+    
+    # Check convergence
+    if (sqrt(sum((beta_new - beta)^2)) < tol) {
+      return(list(beta = beta_new, convergence = TRUE, iter = iter, 
+                  obj = obj[1 : iter], time = Sys.time() - start_time))
+    }
+    beta <- beta_new
+  }
+  
+  return(list(beta = beta, convergence = TRUE, iter = max_iter, obj = obj, 
+              time = Sys.time() - start_time))
+}
+
+soft_thresh <- function(x, lambda) {
+  sign(x) * pmax(abs(x) - lambda, 0)
+}
+```
+
+```{r}
+# Simulate data for sparse solutions
+set.seed(9248)
+m <- 500
+n <- 2000
+X <- matrix(rnorm(m * n), nrow = m)
+x0 <- runif(n)
+x0[x0 < 0.9] <- 0
+y <- X %*% x0 + rnorm(m)
+lambda <- 0.5
+```
+
+```{r}
+if (!requireNamespace("glmnet", quietly = TRUE)) {
+  install.packages("glmnet")
+}
+library(glmnet)
+
+# Compute R^2
+calculate_r_squared <- function(y, y_pred) {
+  ss_total <- sum((y - mean(y))^2)  # Total sum of squares
+  ss_residual <- sum((y - y_pred)^2)  # Residual sum of squares
+  r_squared <- 1 - (ss_residual / ss_total)
+  return(r_squared)
+}
+
+# Residual Plot
+plot_residuals <- function(y, y_pred, r_squared, title) {
+  residuals <- y - y_pred
+  plot(residuals, main = title,
+       xlab = "Index", ylab = "Residuals", col = "blue", pch = 16)
+  abline(h = 0, col = "red", lwd = 2)
+  legend("topright", legend = paste("R^2 =", round(r_squared, 3)), bty = "n", cex = 1.2)
+}
+
+# Run FISTA
+result_fista <- FISTA_solver(X, y, lambda, max_iter = 1000, tol = 1e-5)
+beta_fista <- result_fista$beta
+y_pred_fista <- X %*% beta_fista
+
+# Run glmnet
+fit_glmnet <- glmnet(X, y, alpha = 1, lambda = lambda, intercept = TRUE)
+beta_glmnet <- as.vector(coef(fit_glmnet, s = lambda))  # Include intercept term
+y_pred_glmnet <- predict(fit_glmnet, X, s = lambda)
+
+# R^2 for both methods
+r_squared_fista <- calculate_r_squared(y, y_pred_fista)
+r_squared_glmnet <- calculate_r_squared(y, y_pred_glmnet)
+
+# Visualize residual plots
+par(mfrow = c(1, 2))  # Two plots side-by-side
+plot_residuals(y, y_pred_fista, r_squared_fista, title = "Residual Plot: fista")
+plot_residuals(y, y_pred_glmnet, r_squared_glmnet, title = "Residual Plot: glmnet")
+```
+
