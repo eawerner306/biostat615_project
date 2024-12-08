@@ -601,3 +601,22 @@ robust_lasso <- function(X, y, lambda = 0.1, method = "auto", priority = NULL,
   # Return result
   return(list(method = method, fit = fit))
 }
+
+# Priority: accuracy / speed / sparsity / scalability
+#     ├── If Priority = "accuracy":
+#     │       ├── If data_size = "small" AND sparsity_level = "high": Use LARS
+#     │       ├── If data_size ∈ {"medium", "large"} AND sparsity_level = "medium": Use FISTA
+#     │       └── Else: Use ISTA
+#     ├── If Priority = "speed":
+#     │       ├── If data_size = "very_large" OR sparsity_level = "low": Use SLA
+#     │       ├── If data_size ∈ {"medium", "large"}: Use CGDA
+#     │       └── Else: Use FISTA
+#     ├── If Priority = "sparsity":
+#     │       ├── If sparsity_level = "high" AND feature_size = "high": Use PFA
+#     │       ├── If sparsity_level = "high": Use LARS
+#     │       └── Else: Use CGDA
+#     └── If Priority = "scalability":
+#             ├── If data_size = "very_large": Use SLA
+#             ├── If data_size ∈ {"medium", "large"}: Use CGDA
+#             └── Else: Use FISTA
+
