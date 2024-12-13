@@ -103,7 +103,7 @@
 # # }
 
 # 备用
-# CGDA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
+# CGDA_lassosolve <- function(X, y, lambda = NULL, max_iter = 1000, tol = 1e-6) {
   
 #   # Add intercept column to X
 #   X <- cbind(1, X)  # 添加一列全 1 表示截距
@@ -174,7 +174,8 @@ CGDA_lassosolve <- function(X, y, lambda = NULL, max_iter = 1000, tol = 1e-6) {
 
   # Default lambda calculation
   if (is.null(lambda)) {
-    lambda <- max(abs(Xty[-1])) / n  # Default lambda based on maximum correlation
+    # lambda <- max(abs(Xty[-1])) / n  # Default lambda based on maximum correlation
+    lambda <- 0.1
   }
 
   # Initialize beta
