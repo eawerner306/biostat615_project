@@ -219,16 +219,20 @@ SLA_lassosolve <- function(X, y, lambda = NULL, alpha = 10, max_iter = 1000, tol
   mu <- 1 / (sigma_max_sq + lambda * alpha / 2)
 
   # Smooth surrogate gradient function
+  # surrogate_gradient <- function(beta) {
+  #   # Smooth approximation of the L1 penalty gradient
+  #   safe_beta <- ifelse(abs(beta) < 1e-8, 1e-8, beta)  # Avoid division by zero
+  #   exp_alpha_beta <- exp(alpha * safe_beta)
+  #   exp_neg_alpha_beta <- exp(-alpha * safe_beta)
+  #   term1 <- -2 * log(1 + exp_neg_alpha_beta) / safe_beta^2
+  #   term2 <- (2 * alpha * exp_alpha_beta) / (safe_beta * (1 + exp_alpha_beta)) - 1
+  #   v <- term1 + term2
+  #   v[!is.finite(v)] <- 0  # Handle non-finite values
+  #   return(lambda * v)
+  # }
   surrogate_gradient <- function(beta) {
-    # Smooth approximation of the L1 penalty gradient
-    safe_beta <- ifelse(abs(beta) < 1e-8, 1e-8, beta)  # Avoid division by zero
-    exp_alpha_beta <- exp(alpha * safe_beta)
-    exp_neg_alpha_beta <- exp(-alpha * safe_beta)
-    term1 <- -2 * log(1 + exp_neg_alpha_beta) / safe_beta^2
-    term2 <- (2 * alpha * exp_alpha_beta) / (safe_beta * (1 + exp_alpha_beta)) - 1
-    v <- term1 + term2
-    v[!is.finite(v)] <- 0  # Handle non-finite values
-    return(lambda * v)
+    grad <- tanh(alpha * beta / 2)
+    return(grad)
   }
 
   # Initialization
