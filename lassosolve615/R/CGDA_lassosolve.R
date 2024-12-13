@@ -16,6 +16,8 @@
 
 CGDA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
 
+  # Add intercept column to X
+  X <- cbind(1, X)  # 添加一列全 1 表示截距
   n <- nrow(X)
   p <- ncol(X)
 
@@ -54,50 +56,18 @@ CGDA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
   return(list(beta = beta, iter = max_iter, convergence = FALSE))
 }
 
-# # Example usage
 # set.seed(123)
+
+# # Example data
 # n <- 100
 # p <- 10
-# X <- matrix(rnorm(n * p), n, p)
-# beta_true <- c(1, -1, rep(0, p - 2))
-# y <- X %*% beta_true + rnorm(n)
+# X <- matrix(rnorm(n * p), n, p)           # 设计矩阵
+# beta_true <- c(5, 1, -1, rep(0, p - 2))  # 包括截距项
+# y <- X %*% beta_true[-1] + beta_true[1] + rnorm(n)  # 响应变量
+
+# # Regularization parameter
 # lambda <- 0.1
-#
+
+# # Solve using CGDA with intercept column
 # result <- CGDA_lassosolve(X, y, lambda)
 # print(result)
-
-# CGDA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
-#   # Input:
-#   # X: design matrix (n x p)
-#   # y: response vector (n x 1)
-#   # lambda: regularization parameter
-#   # max_iter: maximum number of iterations (passed to glmnet)
-#   # tol: tolerance for convergence (passed to glmnet)
-#
-#   # Output:
-#   # beta: estimated coefficients
-#   # iter: number of iterations performed (glmnet reports convergence based on tol)
-#   # convergence: always TRUE for glmnet since it handles convergence internally
-#
-#   # Load required library
-#   if (!requireNamespace("glmnet", quietly = TRUE)) {
-#     stop("The 'glmnet' package is required for this function. Please install it with install.packages('glmnet').")
-#   }
-#
-#   # Fit the Lasso model using glmnet
-#   fit <- glmnet::glmnet(
-#     x = X,
-#     y = y,
-#     alpha = 1,          # Lasso regularization (alpha = 1)
-#     lambda = lambda,    # Regularization parameter
-#     standardize = FALSE, # Assume data is already standardized if needed
-#     thresh = tol,       # Convergence tolerance
-#     maxit = max_iter    # Maximum number of iterations
-#   )
-#
-#   # Extract the coefficients for the specified lambda
-#   beta <- as.vector(coef(fit, s = lambda))[-1] # Drop intercept
-#
-#   # Return results
-#   return(list(beta = beta, iter = NA, convergence = TRUE))
-# }
