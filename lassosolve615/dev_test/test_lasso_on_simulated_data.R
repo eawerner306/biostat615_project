@@ -213,4 +213,7 @@ lasso_mnh <- compare_lasso_methods(data_mnh$X, data_mnh$y, lambda = 0.1)
 lasso_mhl <- compare_lasso_methods(data_mhl$X, data_mhl$y, lambda = 0.1)
 lasso_mhm <- compare_lasso_methods(data_mhm$X, data_mhm$y, lambda = 0.1)
 lasso_mhh <- compare_lasso_methods(data_mhh$X, data_mhh$y, lambda = 0.1)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5659d78 (add simulated data generation and lasso comparison functions)
