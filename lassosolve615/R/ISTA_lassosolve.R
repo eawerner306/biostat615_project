@@ -64,7 +64,7 @@
 # print(result)
 
 #keyingli
-ISTA_lassosolve <- function(X, y, lambda = NULL, max_iter = 1000, tol = 1e-6) {
+ISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
   n <- nrow(X)
   p <- ncol(X)
 
@@ -79,9 +79,9 @@ ISTA_lassosolve <- function(X, y, lambda = NULL, max_iter = 1000, tol = 1e-6) {
   Xty <- crossprod(X_centered, y_centered) / n
 
   # Default lambda calculation
-  if (is.null(lambda)) {
-    lambda <- max(abs(Xty)) / n  # Default lambda based on maximum correlation
-  }
+  # if (is.null(lambda)) {
+  #   lambda <- max(abs(Xty)) / n  # Default lambda based on maximum correlation
+  # }
 
   # Lipschitz constant (L = max eigenvalue of XtX)
   L <- max(eigen(XtX, symmetric = TRUE, only.values = TRUE)$values)
