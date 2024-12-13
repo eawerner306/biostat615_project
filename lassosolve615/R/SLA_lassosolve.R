@@ -75,7 +75,7 @@
 # print(result)
 
 
-# jack
+
 SLA_lassosolve <- function(X, y, lambda = NULL, alpha = 10, max_iter = 1000, tol = 1e-6) {
   # SLA_lassosolve: Smooth Lasso Algorithm for Lasso regression
   # Inputs:
