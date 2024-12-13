@@ -12,10 +12,14 @@
 # iter: number of iterations performed
 # convergence: boolean indicating whether convergence was achieved
 
-FISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
 
+FISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
   n <- nrow(X)
   p <- ncol(X)
+
+  # Add intercept column to X (if not already added)
+  X <- cbind(1, X)  # 添加一列全 1 的常数列，作为截距
+  p <- ncol(X)      # 更新特征数量
 
   # Precompute X'X and X'y
   XtX <- crossprod(X)
@@ -59,14 +63,18 @@ FISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
   return(list(beta = beta, iter = max_iter, convergence = FALSE))
 }
 
-# # Example usage
 # set.seed(123)
-# n <- 100
-# p <- 10
-# X <- matrix(rnorm(n * p), n, p)
-# beta_true <- c(1, -1, rep(0, p - 2))
-# y <- X %*% beta_true + rnorm(n)
+#
+# # 模拟数据
+# n <- 100  # 样本数
+# p <- 10   # 特征数
+# X <- matrix(rnorm(n * p), n, p)           # 特征矩阵
+# beta_true <- c(5, 1, -1, rep(0, p - 2))  # 包括截距项（5）和稀疏系数
+# y <- X %*% beta_true[-1] + beta_true[1] + rnorm(n)  # 生成响应变量
+#
+# # 正则化参数
 # lambda <- 0.1
 #
+# # 调用 FISTA_lassosolve
 # result <- FISTA_lassosolve(X, y, lambda)
 # print(result)
