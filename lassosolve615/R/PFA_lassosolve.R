@@ -1,59 +1,59 @@
-PFA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
-  # Ensure the data dimensions are valid
-  n <- nrow(X)
-  p <- ncol(X)
+# PFA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
+#   # Ensure the data dimensions are valid
+#   n <- nrow(X)
+#   p <- ncol(X)
   
-  # Standardize X and y
-  X_means <- colMeans(X)
-  X_sds <- apply(X, 2, sd)
-  X_std <- scale(X, center = X_means, scale = X_sds)
-  y_mean <- mean(y)
-  y_centered <- y - y_mean
+#   # Standardize X and y
+#   X_means <- colMeans(X)
+#   X_sds <- apply(X, 2, sd)
+#   X_std <- scale(X, center = X_means, scale = X_sds)
+#   y_mean <- mean(y)
+#   y_centered <- y - y_mean
   
-  # Add intercept column to X
-  X_aug <- cbind(1, X_std)  # Add a column of 1s for the intercept
-  p_aug <- ncol(X_aug)      # Update the number of features (including intercept)
+#   # Add intercept column to X
+#   X_aug <- cbind(1, X_std)  # Add a column of 1s for the intercept
+#   p_aug <- ncol(X_aug)      # Update the number of features (including intercept)
   
-  # Initialize coefficients
-  beta <- rep(0, p_aug)
+#   # Initialize coefficients
+#   beta <- rep(0, p_aug)
   
-  # Precompute X'X and X'y
-  XtX <- crossprod(X_aug) / n
-  Xty <- crossprod(X_aug, y_centered) / n
+#   # Precompute X'X and X'y
+#   XtX <- crossprod(X_aug) / n
+#   Xty <- crossprod(X_aug, y_centered) / n
   
-  # Path-following algorithm
-  for (iter in 1:max_iter) {
-    beta_prev <- beta
+#   # Path-following algorithm
+#   for (iter in 1:max_iter) {
+#     beta_prev <- beta
     
-    for (j in 2:p_aug) {  # Skip intercept in regularization
-      # Compute the partial residual
-      r_j <- Xty[j] - sum(XtX[j, -j] * beta[-j])
+#     for (j in 2:p_aug) {  # Skip intercept in regularization
+#       # Compute the partial residual
+#       r_j <- Xty[j] - sum(XtX[j, -j] * beta[-j])
       
-      # Soft-threshold update
-      beta[j] <- sign(r_j) * max(0, abs(r_j) - lambda) / XtX[j, j]
-    }
+#       # Soft-threshold update
+#       beta[j] <- sign(r_j) * max(0, abs(r_j) - lambda) / XtX[j, j]
+#     }
     
-    # Update intercept (not regularized)
-    beta[1] <- Xty[1] - sum(XtX[1, -1] * beta[-1])
+#     # Update intercept (not regularized)
+#     beta[1] <- Xty[1] - sum(XtX[1, -1] * beta[-1])
     
-    # Check for convergence
-    if (sqrt(sum((beta - beta_prev)^2)) < tol) {
-      # Rescale beta back to original scale
-      beta_rescaled <- beta
-      beta_rescaled[-1] <- beta_rescaled[-1] / X_sds  # Adjust for standardization
-      beta_rescaled[1] <- beta[1] + y_mean - sum((X_means / X_sds) * beta[-1])  # Adjust intercept
+#     # Check for convergence
+#     if (sqrt(sum((beta - beta_prev)^2)) < tol) {
+#       # Rescale beta back to original scale
+#       beta_rescaled <- beta
+#       beta_rescaled[-1] <- beta_rescaled[-1] / X_sds  # Adjust for standardization
+#       beta_rescaled[1] <- beta[1] + y_mean - sum((X_means / X_sds) * beta[-1])  # Adjust intercept
       
-      return(list(beta = beta_rescaled, iter = iter, convergence = TRUE))
-    }
-  }
+#       return(list(beta = beta_rescaled, iter = iter, convergence = TRUE))
+#     }
+#   }
   
-  # If max_iter is reached without convergence
-  beta_rescaled <- beta
-  beta_rescaled[-1] <- beta_rescaled[-1] / X_sds
-  beta_rescaled[1] <- beta[1] + y_mean - sum((X_means / X_sds) * beta[-1])
+#   # If max_iter is reached without convergence
+#   beta_rescaled <- beta
+#   beta_rescaled[-1] <- beta_rescaled[-1] / X_sds
+#   beta_rescaled[1] <- beta[1] + y_mean - sum((X_means / X_sds) * beta[-1])
   
-  return(list(beta = beta_rescaled, iter = max_iter, convergence = FALSE))
-}
+#   return(list(beta = beta_rescaled, iter = max_iter, convergence = FALSE))
+# }
 
 # # Example usage
 # set.seed(123)
@@ -66,3 +66,72 @@ PFA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
 
 # result <- PFA_lassosolve(X, y, lambda)
 # print(result)
+
+PFA_lassosolve <- function(X, y, lambda_seq = NULL, max_iter = 1000, tol = 1e-6) {
+  # Ensure the data dimensions are valid
+  n <- nrow(X)
+  p <- ncol(X)
+
+  # Standardize X and y
+  X_means <- colMeans(X)
+  X_sds <- apply(X, 2, sd)
+  X_std <- scale(X, center = X_means, scale = X_sds)
+  y_mean <- mean(y)
+  y_centered <- y - y_mean
+
+  # Add intercept column to X
+  X_aug <- cbind(1, X_std)
+  p_aug <- ncol(X_aug)
+
+  # Initialize coefficients
+  beta <- rep(0, p_aug)
+  beta_path <- list()
+
+  # Precompute X'X and X'y
+  XtX <- crossprod(X_aug) / n
+  Xty <- crossprod(X_aug, y_centered) / n
+
+  # Default lambda sequence if not provided
+  if (is.null(lambda_seq)) {
+    lambda_max <- max(abs(Xty[-1]))  # Largest lambda where all coefficients are zero
+    lambda_min <- 0.001 * lambda_max # Smallest lambda as a fraction of lambda_max
+    lambda_seq <- exp(seq(log(lambda_max), log(lambda_min), length.out = 100))
+  }
+
+  # Loop over lambda sequence
+  for (lambda in lambda_seq) {
+    for (iter in 1:max_iter) {
+      beta_prev <- beta
+
+      # Update intercept
+      beta[1] <- Xty[1] - sum(XtX[1, -1] * beta[-1])
+
+      # Update coefficients (soft-thresholding)
+      for (j in 2:p_aug) {
+        r_j <- Xty[j] - sum(XtX[j, -j] * beta[-j])
+        beta[j] <- sign(r_j) * max(0, abs(r_j) - lambda) / XtX[j, j]
+      }
+
+      # Check for convergence
+      if (sqrt(sum((beta - beta_prev)^2)) < tol) break
+    }
+
+    # Store solution for this lambda
+    beta_rescaled <- beta
+    beta_rescaled[-1] <- beta_rescaled[-1] / X_sds
+    beta_rescaled[1] <- beta[1] + y_mean - sum((X_means / X_sds) * beta[-1])
+    beta_path[[as.character(lambda)]] <- beta_rescaled
+
+    # Stop if converged
+    if (sqrt(sum((beta - beta_prev)^2)) < tol) {
+      return(list(beta = beta_rescaled, iter = iter, convergence = TRUE))
+    }
+  }
+
+  # If not converged
+  beta_rescaled <- beta
+  beta_rescaled[-1] <- beta_rescaled[-1] / X_sds
+  beta_rescaled[1] <- beta[1] + y_mean - sum((X_means / X_sds) * beta[-1])
+
+  return(list(beta = beta_rescaled, iter = max_iter, convergence = FALSE))
+}

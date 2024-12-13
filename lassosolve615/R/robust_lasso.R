@@ -490,7 +490,7 @@ source(here("R/LARS_lassosolve.R"))
 #   return(list(method = method, fit = fit))
 # }
 
-choose_lasso_algorithm <- function(X, y, lambda = 0.1, priority = NULL, 
+choose_lasso_algorithm <- function(X, y, lambda = NULL, priority = NULL, 
                                       data_size = NULL, feature_size = NULL, sparsity_level = NULL) {
   # Helper function to calculate sparsity
   calculate_sparsity <- function(data) {
@@ -569,7 +569,7 @@ choose_lasso_algorithm <- function(X, y, lambda = 0.1, priority = NULL,
 }
 
 # Robust Lasso Wrapper
-robust_lasso <- function(X, y, lambda = 0.1, method = "auto", priority = NULL,
+robust_lasso <- function(X, y, lambda = NULL, method = "auto", priority = NULL,
                          data_size = NULL, feature_size = NULL, sparsity_level = NULL) {
   # Choose algorithm
   if (method != "auto" && !is.null(priority)) {
