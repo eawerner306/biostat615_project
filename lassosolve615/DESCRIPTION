@@ -1,12 +1,12 @@
 Package: lassosolve615
 Type: Package
-Title: What the Package Does
+Title: Algorithms with Robust Selection to Solve Lasso
 Version: 0.1.0
 Author: Ethan Werner, Keying Li, Jack Yang
-Maintainer: The package maintainer <yourself@somewhere.net>
+Maintainer: The package maintainer <eawerner@umich.edu>
 Description: Robustly chooses between multiple different sparse data handling
 algorithms to solve lasso and slow convergence issues.
-License: What license is it under?
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
