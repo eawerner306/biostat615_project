@@ -168,6 +168,56 @@
 #   return(list(beta = full_beta, iter = max_iter, convergence = FALSE))
 # }
 
+# 备用
+# ISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
+#   n <- nrow(X)
+#   p <- ncol(X)
+
+#   # Center X and y for numerical stability
+#   X_mean <- colMeans(X)
+#   y_mean <- mean(y)
+#   X_centered <- scale(X, center = X_mean, scale = FALSE)
+#   y_centered <- y - y_mean
+
+#   # Precompute X'X and X'y
+#   XtX <- crossprod(X_centered) / n
+#   Xty <- crossprod(X_centered, y_centered) / n
+
+#   # Lipschitz constant (L = max eigenvalue of XtX)
+#   L <- max(eigen(XtX, symmetric = TRUE, only.values = TRUE)$values)
+
+#   # Initialize beta (use Ridge regression initialization for better accuracy)
+#   beta <- solve(XtX + diag(lambda, p), Xty)
+
+#   # Soft-thresholding function
+#   soft_threshold <- function(z, gamma) {
+#     sign(z) * pmax(0, abs(z) - gamma)
+#   }
+
+#   # ISTA Iterations
+#   for (iter in 1:max_iter) {
+#     # Gradient calculation
+#     gradient <- XtX %*% beta - Xty
+#     beta_new <- soft_threshold(beta - (1 / L) * gradient, lambda / L)
+
+#     # Check convergence using relative error
+#     if (sqrt(sum((beta_new - beta)^2)) / max(1, sqrt(sum(beta^2))) < tol) {
+#       intercept <- y_mean - sum(X_mean * beta_new)  # Restore intercept
+#       full_beta <- c(intercept, beta_new)          # Combine intercept and coefficients
+#       return(list(beta = full_beta, iter = iter, convergence = TRUE))
+#     }
+
+#     # Update beta
+#     beta <- beta_new
+#   }
+
+#   # Final intercept calculation
+#   intercept <- y_mean - sum(X_mean * beta)
+#   full_beta <- c(intercept, beta)
+
+#   return(list(beta = full_beta, iter = max_iter, convergence = FALSE))
+# }
+
 ISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
   n <- nrow(X)
   p <- ncol(X)
@@ -185,8 +235,8 @@ ISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
   # Lipschitz constant (L = max eigenvalue of XtX)
   L <- max(eigen(XtX, symmetric = TRUE, only.values = TRUE)$values)
 
-  # Initialize beta (use Ridge regression initialization for better accuracy)
-  beta <- solve(XtX + diag(lambda, p), Xty)
+  # Initialize beta (use zeros for simplicity)
+  beta <- rep(0, p)
 
   # Soft-thresholding function
   soft_threshold <- function(z, gamma) {
@@ -216,6 +266,8 @@ ISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
 
   return(list(beta = full_beta, iter = max_iter, convergence = FALSE))
 }
+
+
 
 
 # ISTA_lassosolve <- function(X, y, lambda, max_iter = 1000, tol = 1e-6) {
