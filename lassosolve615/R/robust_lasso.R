@@ -100,7 +100,7 @@
 #   return("No suitable algorithm found. Please check your inputs.")
 # }
 
-# 版本2
+
 choose_lasso_algorithm <- function(X, y, lambda = 0.1, priority = NULL,
                                    data_size = NULL, feature_size = NULL, sparsity_level = NULL) {
   # Helper function to calculate sparsity
@@ -146,32 +146,67 @@ choose_lasso_algorithm <- function(X, y, lambda = 0.1, priority = NULL,
                              ifelse(sparsity > 0.5, "medium", "low"))
   }
 
-  # Algorithm selection based on priority and data characteristics
-  if (priority == "accuracy") {
-    if (data_size == "small" && sparsity_level == "high") {
+  # version3
+   if (priority == "accuracy") {
+    if (sparsity_level == "high") {
       return("LARS")
-    } else if (data_size %in% c("medium", "large") && sparsity_level == "medium") {
+    } else if (data_size == "medium" && sparsity_level == "medium") {
+      return("FISTA")
+    } else if (data_size == "large" && sparsity_level == "low") {
+      return("ISTA")
+    } else {
+      return("LARS")
+    }
+  } else if (priority == "speed") {
+    if (data_size == "very_large" || sparsity_level == "high") {
+      return("PFA")
+    } else if ((data_size == "medium" || data_size == "large") && feature_size == "medium") {
+      return("CGDA")
+    } else if (feature_size == "low") {
       return("FISTA")
     } else {
       return("ISTA")
     }
-  } else if (priority == "speed") {
-    if (data_size == "very_large" || sparsity_level == "low") {
-      return("SLA")
-    } else if (data_size %in% c("medium", "large")) {
-      return("CGDA")
-    } else {
-      return("FISTA")
-    }
   } else if (priority == "sparsity") {
-    if (sparsity_level == "high" && feature_size == "high") {
+    if (feature_size == "low" && sparsity_level == "high") {
       return("PFA")
-    } else if (sparsity_level == "high") {
-      return("LARS")
+    } else if (sparsity_level == "medium") {
+      return("CGDA")
+    } else if (sparsity_level == "low") {
+      return("FISTA")
     } else {
       return("CGDA")
     }
   }
+
+
+  # 版本2
+  # Algorithm selection based on priority and data characteristics
+  # if (priority == "accuracy") {
+  #   if (data_size == "small" && sparsity_level == "high") {
+  #     return("LARS")
+  #   } else if (data_size %in% c("medium", "large") && sparsity_level == "medium") {
+  #     return("FISTA")
+  #   } else {
+  #     return("ISTA")
+  #   }
+  # } else if (priority == "speed") {
+  #   if (data_size == "very_large" || sparsity_level == "low") {
+  #     return("SLA")
+  #   } else if (data_size %in% c("medium", "large")) {
+  #     return("CGDA")
+  #   } else {
+  #     return("FISTA")
+  #   }
+  # } else if (priority == "sparsity") {
+  #   if (sparsity_level == "high" && feature_size == "high") {
+  #     return("PFA")
+  #   } else if (sparsity_level == "high") {
+  #     return("LARS")
+  #   } else {
+  #     return("CGDA")
+  #   }
+  # }
 
   # Default output
   return("No suitable algorithm found. Please check your inputs.")
